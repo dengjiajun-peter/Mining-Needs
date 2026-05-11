@@ -1,1 +1,115 @@
-Coming soon
+# DMAD-a100: Multi-Agent Debate Reasoning
+
+This repository supports multi-agent debate research on reasoning benchmarks. It includes tools for generating model outputs, building debate workflows, and analyzing debate performance with both homogeneous and heterogeneous agent strategies.
+
+## Core components
+
+- `main.py`
+  - Primary entrypoint for generating base reasoning outputs.
+  - Supports `ScienceQA`, `mm-vet`, and `custom` datasets.
+  - Supports reasoning modes such as `io`, `ccot`, `ddcot`, `io_pos`, `io_posneg`, `kg`, `carp_json`, `dtg_json`, and more.
+  - Saves outputs into `outputs_none_lectures/` or `outputs_with_lectures/` depending on whether lecture context is used.
+
+- `main_MAD.py`
+  - Builds multi-agent debate chains from pre-generated base outputs.
+  - Uses a multi-round debate loop (`agents=3`, `rounds=6` by default).
+  - Writes debate records under `outputs_DMAD/` with fields like `answers_`, `agent_contexts`, and `usage`.
+  - Can run homogeneous MAD-style debate for base reasoning methods.
+
+- `main_DMAD.py`
+  - Orchestrates a heterogeneous debate workflow using different reasoning styles.
+  - Reads base outputs from multiple reasoning modes and generates cross-agent debate messages.
+  - Supports `custom` dataset prompt variants and allows resuming from existing files.
+  - Produces DMAD-style JSON outputs in `outputs_DMAD/`.
+
+- `Dataset.py`
+  - Loads datasets and constructs prompts.
+  - Supports:
+    - `ScienceQA` via `datasets.load_dataset`
+    - `mm-vet` via local JSON metadata
+    - `custom` datasets from Excel, CSV, or JSON files
+  - Includes prompt builders for custom binary classification, CARP, DTG, CCOT, and DDCOT variants.
+
+- `record.py`
+  - Manages output file paths and persistence.
+  - Saves and loads records with fallback path resolution for legacy filenames.
+  - Provides utilities for answer extraction, consistency evaluation, and DMAD accuracy reporting.
+  - Writes outputs in:
+    - `outputs_none_lectures/`
+    - `outputs_with_lectures/`
+    - `outputs_DMAD/`
+
+- `model.py`
+  - Wraps OpenAI/vLLM chat completion calls using `openai.OpenAI`.
+  - Implements `MLLM_load` and `MLLM_generate`.
+  - Tracks token usage and retries API failures.
+
+- `eval.ipynb`
+  - Notebook for post-hoc analysis of generated outputs.
+  - Contains summaries for debate rounds, voting thresholds, best-round selection, and heterogeneous debate results.
+
+## Supported datasets
+
+- `ScienceQA`
+  - Uses image prompts and prompt construction for multiple-choice reasoning.
+- `mm-vet`
+  - Uses a local JSON dataset and image support.
+- `custom`
+  - Loads from a user-supplied Excel/CSV/JSON file.
+  - Preserves `raw_id` or row identity for custom records.
+
+## How to run
+
+Install dependencies first:
+
+```bash
+pip install -r requirements.txt
+```
+
+Generate base reasoning outputs:
+
+```bash
+python main.py --model <model_name> --dataset <dataset_name> --reasoning <strategy_name>
+```
+
+Example:
+
+```bash
+python main.py --model llava-1.6-13b --dataset ScienceQA --reasoning io
+```
+
+Run MAD-style debate with existing outputs:
+
+```bash
+python main_MAD.py --model <model_name> --dataset <dataset_name> --reasoning io
+```
+
+Run DMAD-style heterogeneous debate:
+
+```bash
+python main_DMAD.py --model <model_name> --dataset <dataset_name>
+```
+
+For custom datasets, provide the input path using `--custom_data_path` or pass the file path as `--split` when `--dataset custom`.
+
+## Output locations
+
+- `outputs_none_lectures/`
+  - Base reasoning records without lecture context.
+- `outputs_with_lectures/`
+  - Base reasoning records with lecture context.
+- `outputs_DMAD/`
+  - Debate-generated outputs and multi-round summaries.
+
+## Notes
+
+- `main.py` can resume from previous runs by appending to existing record files.
+- `main_MAD.py` and `main_DMAD.py` expect pre-generated base outputs in the repository output directories.
+- The codebase is structured for experimental comparison of reasoning and debate strategies, not as a polished production pipeline.
+
+## Recommended workflow
+
+1. Generate base reasoning outputs with `main.py`.
+2. Run a debate workflow using `main_MAD.py` or `main_DMAD.py`.
+3. Analyze results in `eval.ipynb`.
+4. Extend `Dataset.py` or prompt templates for new custom tasks.
